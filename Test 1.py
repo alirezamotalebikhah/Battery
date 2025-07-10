@@ -1,10 +1,12 @@
-
+from msilib import Binary
 
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
 from pyomo.environ import *
+from shapely.measurement import bounds
+
 #define model
 model = ConcreteModel(doc="Home energy Management")
 #define Set
@@ -61,3 +63,26 @@ model.alpha=Param(initialize=0.0630,doc="alpha")
 model.gamma=Param(initialize=0.0971,doc="gamma")
 model.teta=Param(initialize=4.0253,doc="teta")
 model.zeta=Param(initialize=1.0923,doc="zeta")
+model.eta=Param(initialize=0.95, doc="Battery efficiency")
+
+model.p_grid = Var(model.T , bounds=(0,100) , within=NonNegativeReals , doc="Power import from grid")
+model.p_sell = Var(model.T , bounds=(0,100) , within=NonNegativeReals , doc="Power sell to grid")
+model.P_ch = Var(model.T ,within=NonNegativeReals , doc="power of Charge Battery")
+model.P_dis = Var(model.T , within=NonNegativeReals , doc="power of Discharge Battery")
+model.P_shift_up = Var(model.T , model.A , within=NonNegativeReals,doc="power of Shift Up")
+model.P_shift_down = Var(model.T , model.A , within=NonNegativeReals , doc="power of Shift Down")
+model.E = Var(model.T , within=NonNegativeReals , doc="Battery Energy")
+model.R_ch = Var(model.T , within=NonNegativeReals , doc="Charge Rate")
+model.R_dis = Var(model.T , within=NonNegativeReals , doc="Discharge Rate")
+model.N_cycle = Var( within=NonNegativeReals , doc="Cycle Rate")
+model.SOH =Var(model.T , within=NonNegativeReals , doc="State Of Charge")
+model.Q_loss = Var(model.T , within=NonNegativeReals , doc="Battery Capacity Loss")
+
+model.u_grid = Var(model.T , within=Binary , doc="sequence of  import power from grid")
+model.u_sell = Var(model.T , within=Binary , doc="sequence of export power to grid")
+model.u_ch = Var(model.T , within=Binary , doc="sequence of Charge Battery")
+model.u_dis = Var(model.T , within=Binary , doc="sequence of Discharge Battery")
+model.u_shif_up = Var(model.T , model.A , within=Binary , doc="sequence of Shift Up")
+model.u_shift_down = Var(model.T , model.A , within=Binary , doc="sequence of Shift Down")
+
+
