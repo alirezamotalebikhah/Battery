@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from pyomo.environ import *
-from torch.fx.experimental.migrate_gradual_types.constraint import Constraint
+
 
 #define model
 model = ConcreteModel(doc="Home energy Management")
@@ -32,8 +32,8 @@ np.random.seed(42)
 pv_product={}
 for t in model.T:
     if 36<t<60:
-        value = np.random.normal(loc=0.5,scale=0.2)
-        pv_product[t]=max(0,min(1, value))
+        valuepv = np.random.normal(loc=0.5,scale=0.2)
+        pv_product[t]=max(0,min(1, valuepv))
     else:
         pv_product[t]= 0
 model.P_pv = Param(model.T , initialize=pv_product, doc="PV Production per day")
@@ -126,13 +126,13 @@ def energyequation(model , t):
         return model.E[t] == model.E[t-1] + model.eta * model.P_ch[t] - (model.P_dis[t]/model.eta)
 model.EnergyBatteryEq=Constraint(model.T , rule=energyequation , doc="Energy Battery Equation")
 def shiftpower(model , t,a):
-    return model.P_shift_up[t] == model.pflex[a]*model.u_shift_up[t,a]
+    return model.P_shift_up[t,a] == model.pflex[a]*model.u_shift_up[t,a]
 model.ShiftPower=Constraint(model.T , model.A , rule=shiftpower , doc="Shift Power")
 def shifttime(model , t , a):
     if t not in model.shift[a]:
         return model.u_shift_up[t,a] == 0
     else:
-        Constraint.Skip
+        return Constraint.Skip
 model.shiftTime=Constraint(model.T , model.A , rule=shifttime , doc="Shift Time")
 def demand(model , t):
     return model.P_demand[t] == sum(model.P_shift_up[t,a] for a in model.A)
@@ -140,6 +140,31 @@ model.demand=Constraint(model.T , rule=demand, doc="Demand")
 def mustrun(model , a):
     return sum(model.u_shift_up[t,a] for t in model.T) == model.must[a]
 model.MustRun=Constraint(model.A , rule=mustrun, doc="Must Run")
+
+solver = SolverFactory("cbc", executable="C:\\solver\\Cbc-releases.2.10.12-w64-msvc16-md\\bin\\cbc.exe")
+result = solver.solve(model, tee=True)
+
+
+results = {}
+
+for var in model.component_objects(Var, active=True):
+    var_name = var.name
+    var_values = {}
+    for index in var:
+        var_obj = var[index]
+        if var_obj.is_fixed() or var_obj.value is not None:
+            try:
+                var_val = value(var_obj)
+                var_values[index] = var_val
+            except:
+                continue
+    if var_values:
+        results[var_name] = var_values
+
+for var_name, var_values in results.items():
+    print(f"\nVariable: {var_name}")
+    for index, val in var_values.items():
+        print(f"  {index}: {val}")
 
 
 
