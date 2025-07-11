@@ -125,5 +125,21 @@ def energyequation(model , t):
     else:
         return model.E[t] == model.E[t-1] + model.eta * model.P_ch[t] - (model.P_dis[t]/model.eta)
 model.EnergyBatteryEq=Constraint(model.T , rule=energyequation , doc="Energy Battery Equation")
+def shiftpower(model , t,a):
+    return model.P_shift_up[t] == model.pflex[a]*model.u_shift_up[t,a]
+model.ShiftPower=Constraint(model.T , model.A , rule=shiftpower , doc="Shift Power")
+def shifttime(model , t , a):
+    if t not in model.shift[a]:
+        return model.u_shift_up[t,a] == 0
+    else:
+        Constraint.Skip
+model.shiftTime=Constraint(model.T , model.A , rule=shifttime , doc="Shift Time")
+def demand(model , t):
+    return model.P_demand[t] == sum(model.P_shift_up[t,a] for a in model.A)
+model.demand=Constraint(model.T , rule=demand, doc="Demand")
+def mustrun(model , a):
+    return sum(model.u_shift_up[t,a] for t in model.T) == model.must[a]
+model.MustRun=Constraint(model.A , rule=mustrun, doc="Must Run")
+
 
 
