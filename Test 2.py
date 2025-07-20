@@ -70,7 +70,7 @@ model.P_grid = Var(model.T , bounds=(0,100) , within=NonNegativeReals , doc="Pow
 model.P_sell = Var(model.T , bounds=(0,100) , within=NonNegativeReals , doc="Power sell to grid")
 model.P_ch = Var(model.T ,within=NonNegativeReals , doc="power of Charge Battery")
 model.P_dis = Var(model.T , within=NonNegativeReals , doc="power of Discharge Battery")
-model.P_shift_up = Var(model.T , model.A , within=NonNegativeReals,doc="power of Shift Up")
+model.P_shift_up = Var(model.T , model.A , within=Reals,doc="power of Shift Up")
 model.P_shift_down = Var(model.T , model.A , within=NonNegativeReals , doc="power of Shift Down")
 model.E = Var(model.T , within=NonNegativeReals , doc="Battery Energy")
 model.R_ch = Var(model.T , within=NonNegativeReals , doc="Charge Rate")
@@ -92,7 +92,7 @@ def objective(model):
 model.Objective = Objective(rule=objective, sense=minimize , doc="Objective function")
 def balancedemand(model , t):
     demand =model.P_demand[t] + model.P_ch[t] + model.P_sell[t] + sum(model.P_shift_up[t,a] for a in model.A)
-    generation = model.P_grid[t] + model.P_dis[t] + sum(model.P_shift_down[t,a] for a in model.A) +model.P_pv[t]
+    generation = model.P_grid[t] + model.P_dis[t]  +model.P_pv[t]
     return demand == generation
 model.BalancedSupply = Constraint(model.T , rule=balancedemand , doc="Balanced Supply")
 def maxcharge(model , t):
