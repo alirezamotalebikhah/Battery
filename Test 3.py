@@ -68,9 +68,10 @@ model.teta=Param(initialize=4.0253,doc="teta")
 model.zeta=Param(initialize=1.0923,doc="zeta")
 model.eta=Param(initialize=0.95, doc="Battery efficiency")
 model.P_max_ch = Param(initialize=2 , doc="max power of Charge and Discharge")
+model.P_max_net = Param(initialize=10 , doc="max powe can transfer between network an home")
 
-model.P_grid = Var(model.T , bounds=(0,100) , within=NonNegativeReals , doc="Power import from grid")
-model.P_sell = Var(model.T , bounds=(0,100) , within=NonNegativeReals , doc="Power sell to grid")
+model.P_grid = Var(model.T , within=NonNegativeReals , doc="Power import from grid")
+model.P_sell = Var(model.T ,within=NonNegativeReals , doc="Power sell to grid")
 model.P_ch = Var(model.T ,within=NonNegativeReals , doc="power of Charge Battery")
 model.P_dis = Var(model.T , within=NonNegativeReals , doc="power of Discharge Battery")
 model.P_shift_up = Var(model.T , model.A , within=Reals,doc="power of Shift Up")
@@ -91,8 +92,17 @@ model.u_shift_up = Var(model.T , model.A , within=Binary , doc="sequence of Shif
 model.u_shift_down = Var(model.T , model.A , within=Binary , doc="sequence of Shift Down")
 
 def objective(model):
-    return sum(model.P_grid[t] - model.P_sell[t] for t in model.T)
+    return sum(model.P_grid[t] * model.buyprice[t] - model.P_sell[t] * model.sellprice[t] for t in model.T)
 model.Objective = Objective(rule=objective, sense=minimize , doc="Objective function")
+def maxpowerbuy(model,t):
+    return model.P_grid[t] <= model.u_grid[t]*model.P_max_net
+model.MaxPowerBuy=Constraint(model.T , rule=maxpowerbuy , doc="Max power buy from grid")
+def maxpowersell(model,t):
+    return model.P_sell[t] <= model.u_sell[t]*model.P_max_net
+model.MaxPowerSell=Constraint(model.T , rule=maxpowersell , doc="Max power sell from grid")
+def sequencenetwork(model,t):
+    return model.u_sell[t] + model.u_grid[t] <= 1
+model.SequencOfNetwork=Constraint(model.T , rule=sequencenetwork , doc="Sequenc of buy and sell")
 def balancedemand(model , t):
     demand =model.P_demand[t] + model.P_ch[t] + model.P_sell[t] + sum(model.P_shift_up[t,a] for a in model.A)
     generation = model.P_grid[t] + model.P_dis[t]  +model.P_pv[t]
@@ -120,7 +130,7 @@ def cycleequation(model):
     return model.N_cycle == sum(model.R_dis[t] for t in model.T)
 model.CycleEq=Constraint(rule=cycleequation , doc="Cycle Equation")
 def cyleconstraints(model):
-    return model.N_cycle <= 0.5
+    return model.N_cycle <= 3
 model.CycleCons=Constraint(rule=cyleconstraints , doc="Cycle Constraints")
 def energyequation(model , t):
     if t==1 :
